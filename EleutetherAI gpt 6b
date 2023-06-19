@@ -1,0 +1,270 @@
+# model/tokenizer
+model_name: "EleutherAI/gpt-j-6b"
+tokenizer_name: "EleutherAI/gpt-j-6b"
+gradient_checkpointing: false
+save_name: "Yarsy"  # YARSY con el nombre deseado para guardar el modelo
+
+# dataset
+streaming: false
+num_proc: 64
+dataset_path: "/ruta/a/mi/dataset.txt"  # YARSY con la ruta a tu conjunto de datos
+max_length: 1024
+batch_size: 1
+
+# train dynamics
+lr: 2.0e-5
+min_lr: 0
+weight_decay: 0.0
+eval_every: 500
+eval_steps: 105
+save_every: 500
+log_grads_every: 500
+output_dir: "/ruta/a/la/carpeta/codigo_de_lenguaje"  # YARSY con la ruta a la carpeta donde deseas guardar el cÃ³digo de lenguaje
+checkpoint: null
+lora: true
+warmup_steps: 500
+num_epochs: 2
+
+# logging
+wandb: true
+wandb_entity: "Yarsy IA Autoaprendizaje de Sistemas"  # YARSY con el nombre de tu entidad Wandb
+wandb_project_name: "nombre_proyecto"  # YARSY con el nombre de tu proyecto Wandb
+seed: 42
+config = '''
+num_proc: 64
+dataset_path: # CHANGE
+max_length: 1024
+batch_size: 1
+
+# train dynamics
+lr: 2.0e-5
+min_lr: 0
+weight_decay: 0.0
+eval_every: 500
+
+# ... Resto del cÃ³digo de configuraciÃ³n ...
+
+wandb_entity: # yarsy
+wandb_project_name: # yarsy
+seed: 42
+'''
+
+config = '''
+num_proc: 64
+dataset_path: "ruta/al/conjunto/datos.txt"
+max_length: 1024
+batch_size: 1
+
+# train dynamics
+lr: 2.0e-5
+min_lr: 0
+weight_decay: 0.0
+eval_every: 500
+
+# ... Resto del cÃ³digo de configuraciÃ³n ...
+
+wandb_entity: "nombre_entidad"
+wandb_project_name: "nombre_proyecto"
+seed: 42
+'''
+
+# Valores de reemplazo
+model_name = "EleutherAI/gpt-j-6b"
+tokenizer_name = "EleutherAI/gpt-j-6b"
+save_name = "YARSYGPT"
+dataset_path = "ruta/al/conjunto/datos.txt"
+output_dir = "/ruta/a/la/carpeta/codigo_de_lenguaje"
+wandb_entity = "nombre_entidad"
+wandb_project_name = "nombre_proyecto"
+
+# Reemplazar los valores en el cÃ³digo de configuraciÃ³n
+config = config.replace("# CHANGE", dataset_path)
+config = config.replace("# CAMBIAR", save_name)
+config = config.replace("# yarsy", wandb_entity)
+config = config.replace("# yarsy", wandb_project_name)
+config = config.replace("EleutherAI/gpt-j-6b", model_name)
+config = config.replace("EleutherAI/gpt-j-6b", tokenizer_name)
+config = config.replace("# CAMBIAR", output_dir)
+
+print(config)
+import torch
+from transformers import GPTJForCausalLM, GPTJTokenizer
+
+# ConfiguraciÃ³n
+model_name = "EleutherAI/gpt-j-6b"
+tokenizer_name = "EleutherAI/gpt-j-6b"
+dataset_path = "/ruta/a/mi/dataset.txt"  # Reemplaza con la ruta a tu conjunto de datos
+output_dir = "/ruta/a/la/carpeta_existente"  # Reemplaza con la ruta a la carpeta existente donde deseas guardar el modelo
+wandb_entity = "nombre_entidad"
+wandb_project_name = "nombre_proyecto"
+num_proc = 64
+max_length = 1024
+batch_size = 1
+lr = 2.0e-5
+min_lr = 0
+weight_decay = 0.0
+eval_every = 500
+num_epochs = 2
+
+# Inicializar el modelo y el tokenizador
+model = GPTJForCausalLM.from_pretrained(model_name)
+tokenizer = GPTJTokenizer.from_pretrained(tokenizer_name)
+
+# Cargar el conjunto de datos
+with open(dataset_path, "r", encoding="utf-8") as file:
+    dataset = file.read().splitlines()
+
+# FunciÃ³n para tokenizar y codificar los datos
+def tokenize_and_encode(text):
+    input_ids = tokenizer.encode(text, truncation=True, max_length=max_length)
+    return input_ids
+
+# Tokenizar y codificar los datos del conjunto de datos
+encoded_dataset = [tokenize_and_encode(text) for text in dataset]
+
+# Crear el optimizador
+optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+
+# Entrenamiento del modelo
+for epoch in range(num_epochs):
+    for i in range(0, len(encoded_dataset), batch_size):
+        batch = encoded_dataset[i:i+batch_size]
+
+        # Preparar los datos para la entrada al modelo
+        input_ids = torch.tensor(batch).squeeze()
+        labels = input_ids.clone()
+
+        # Pasar los datos al dispositivo GPU si estÃ¡ disponible
+        if torch.cuda.is_available():
+            input_ids = input_ids.cuda()
+            labels = labels.cuda()
+
+        # Calcular la pÃ©rdida y realizar la retropropagaciÃ³n
+        optimizer.zero_grad()
+        outputs = model(input_ids=input_ids, labels=labels)
+        loss = outputs.loss
+        loss.backward()
+        optimizer.step()
+
+        # Imprimir el progreso del entrenamiento
+        if (i+1) % eval_every == 0:
+            print(f"Epoch {epoch+1}/{num_epochs} | Batch {i+1}/{len(encoded_dataset)} | Loss: {loss.item()}")
+
+# Guardar el modelo entrenado
+model.save_pretrained(output_dir)
+
+# Registrar el entrenamiento en Wandb
+import wandb
+wandb.login()
+wandb.init(entity=wandb_entity, project=wandb_project_name)
+config = {
+    "model_name": model_name,
+    "tokenizer_name": tokenizer_name,
+    "dataset_path": dataset_path,
+    "output_dir": output_dir,
+    "num_proc": num_proc,
+    "max_length": max_length,
+    "batch_size": batch_size,
+    "lr": lr,
+    "min_lr": min_lr,
+    "weight_decay": weight_decay,
+    "eval_every": eval_every,
+    "num_epochs": num_epochs
+}
+wandb.config.update(config)
+wandb.save(output_dir)
+wandb.finish()
+
+
+import torch
+from transformers import GPTJForCausalLM, GPTJTokenizer
+
+# ConfiguraciÃ³n
+model_name = "EleutherAI/gpt-j-6b"
+tokenizer_name = "EleutherAI/gpt-j-6b"
+dataset_path = "/ruta/a/mi/dataset.txt"  # Reemplaza con la ruta a tu conjunto de datos
+output_dir = "/ruta/a/la/carpeta_existente"  # Reemplaza con la ruta a la carpeta existente donde deseas guardar el modelo
+wandb_entity = "YARSY"
+wandb_project_name = "YARSY"
+num_proc = 64
+max_length = 1024
+batch_size = 1
+lr = 2.0e-5
+min_lr = 0
+weight_decay = 0.0
+eval_every = 500
+num_epochs = 2
+
+# Inicializar el modelo y el tokenizador
+model = GPTJForCausalLM.from_pretrained(model_name)
+tokenizer = GPTJTokenizer.from_pretrained(tokenizer_name)
+
+# Cargar el conjunto de datos
+with open(dataset_path, "r", encoding="utf-8") as file:
+    dataset = file.read().splitlines()
+
+# FunciÃ³n para tokenizar y codificar los datos
+def tokenize_and_encode(text):
+    input_ids = tokenizer.encode(text, truncation=True, max_length=max_length)
+    return input_ids
+
+# Algoritmo de registro binario
+def binary_register(value):
+    binary_str = bin(value)[2:]  # Convertir el valor decimal a binario
+    return binary_str
+
+# Tokenizar y codificar los datos del conjunto de datos
+encoded_dataset = [tokenize_and_encode(text) for text in dataset]
+
+# Crear el optimizador
+optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+
+# Entrenamiento del modelo
+for epoch in range(num_epochs):
+    for i in range(0, len(encoded_dataset), batch_size):
+        batch = encoded_dataset[i:i+batch_size]
+
+        # Preparar los datos para la entrada al modelo
+        input_ids = torch.tensor(batch).squeeze()
+        labels = input_ids.clone()
+
+        # Pasar los datos al dispositivo GPU si estÃ¡ disponible
+        if torch.cuda.is_available():
+            input_ids = input_ids.cuda()
+            labels = labels.cuda()
+
+        # Calcular la pÃ©rdida y realizar la retropropagaciÃ³n
+        optimizer.zero_grad()
+        outputs = model(input_ids=input_ids, labels=labels)
+        loss = outputs.loss
+        loss.backward()
+        optimizer.step()
+
+        # Imprimir el progreso del entrenamiento
+        if (i+1) % eval_every == 0:
+            print(f"Epoch {epoch+1}/{num_epochs} | Batch {i+1}/{len(encoded_dataset)} | Loss: {loss.item()}")
+
+# Guardar el modelo entrenado
+model.save_pretrained(output_dir)
+
+# Registrar el entrenamiento en Wandb
+import wandb
+wandb.login()
+wandb.init(entity=wandb_entity, project=wandb_project_name)
+config = {
+    "model_name": model_name,
+    "tokenizer_name": tokenizer_name,
+    "dataset_path": dataset_path,
+    "output_dir": output_dir,
+    "num_proc": num_proc,
+    "max_length": max_length,
+    "batch_size": batch_size,
+    "lr": lr,
+    "min_lr": min_lr,
+    "weight_decay": weight_decay,
+    "eval_every": eval_every,
+    "num_epochs": num_epochs
+}
+wandb.config.update(config)
+wandb.save(output_dir)
+wandb.finish()
